@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Файловый Квест · Организация хранения данных</title>
+<style>
+  :root{
+    --text:#e8eefc;
+    --muted:#9aa8c7;
+    --card-brd:rgba(120,160,255,.20);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
+    background:
+      radial-gradient(900px 500px at 12% -8%, rgba(91,140,255,.30), transparent 62%),
+      radial-gradient(800px 480px at 92% 6%, rgba(168,85,247,.26), transparent 60%),
+      radial-gradient(700px 500px at 50% 110%, rgba(34,211,238,.16), transparent 62%),
+      linear-gradient(160deg,#070b1c 0%,#0b1130 55%,#05081a 100%);
+    color:var(--text);
+    display:flex;align-items:center;justify-content:center;
+    min-height:100vh;padding:10px;overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+    user-select:none;
+  }
+  #app{
+    position:relative;
+    width:min(1140px,97vw);
+    height:min(94vh,800px);
+    border-radius:26px;
+    background:linear-gradient(180deg, rgba(17,24,52,.86), rgba(10,15,35,.92));
+    border:1px solid var(--card-brd);
+    box-shadow:0 30px 80px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.06);
+    overflow:hidden;
+    backdrop-filter:blur(10px);
+  }
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;padding:clamp(14px,2.2vh,26px);}
+  .screen.active{display:flex;animation:screenIn .35s ease;}
+  @keyframes screenIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+
+  /* ===== СТАРТ ===== */
+  #startScreen{align-items:center;justify-content:center;overflow-y:auto;}
+  .start-inner{text-align:center;max-width:820px;width:100%;padding:8px 0;}
+  .logo{font-size:clamp(34px,5.4vh,56px);letter-spacing:6px;filter:drop-shadow(0 8px 22px rgba(91,140,255,.55));animation:floaty 3.2s ease-in-out infinite;}
+  @keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-9px);}}
+  h1{
+    font-size:clamp(26px,4.6vh,46px);
+    font-weight:900;letter-spacing:.5px;margin:8px 0 4px;
+    background:linear-gradient(90deg,#7dd3fc,#a78bfa,#f0abfc,#7dd3fc);
+    background-size:250% auto;
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    animation:shine 6s linear infinite;
+  }
+  @keyframes shine{to{background-position:250% center;}}
+  .subtitle{color:var(--muted);font-size:clamp(13px,1.7vh,16px);margin-bottom:clamp(12px,2.4vh,22px);}
+  .info-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));
+    gap:10px;margin-bottom:clamp(14px,2.6vh,24px);
+  }
+  .info-card{
+    background:rgba(91,140,255,.10);
+    border:1px solid var(--card-brd);
+    border-radius:16px;padding:12px 10px;
+    display:flex;flex-direction:column;gap:3px;font-size:13px;
+    transition:.25s;
+  }
+  .info-card:hover{transform:translateY(-4px);background:rgba(91,140,255,.18);}
+  .info-card b{font-size:15px;}
+  .info-card span{color:var(--muted);font-size:12px;}
+  .btn-primary{
+    border:none;cursor:pointer;
+    padding:16px 46px;border-radius:16px;
+    font-size:clamp(16px,2.2vh,20px);font-weight:800;letter-spacing:.4px;
+    color:#fff;
+    background:linear-gradient(135deg,#5b8cff,#a855f7);
+    box-shadow:0 8px 0 #3a2a8a, 0 14px 34px rgba(91,140,255,.45);
+    transition:transform .12s, box-shadow .12s, filter .2s;
+  }
+  .btn-primary:hover{filter:brightness(1.1);}
+  .btn-primary:active{transform:translateY(6px);box-shadow:0 2px 0 #3a2a8a,0 6px 16px rgba(91,140,255,.4);}
+  .start-footer{margin-top:clamp(14px,2.6vh,22px);display:flex;flex-direction:column;gap:10px;align-items:center;}
+  .best{font-size:15px;color:var(--muted);}
+  .best b{color:#fbbf24;font-size:18px;}
+  .ach-list{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
+  .ach-chip{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:6px 12px;border-radius:999px;font-size:12.5px;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.09);
+    color:#5f6c8f;opacity:.55;transition:.25s;
+  }
+  .ach-chip.on{
+    color:#e9f0ff;opacity:1;
+    background:linear-gradient(135deg,rgba(251,191,36,.22),rgba(168,85,247,.22));
+    border-color:rgba(251,191,36,.55);
+    box-shadow:0 0 16px rgba(251,191,36,.28);
+  }
+
+  /* ===== HUD ===== */
+  .hud{
+    display:flex;gap:10px;align-items:stretch;flex-wrap:wrap;
+    background:rgba(91,140,255,.07);
+    border:1px solid var(--card-brd);
+    border-radius:18px;padding:10px 14px;
+  }
+  .hud-block{display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0;}
+  .hud-block.timer-block{flex:1;min-width:180px;}
+  .hud-label{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-weight:700;}
+  .hud-value{font-size:clamp(14px,1.9vh,17px);font-weight:800;}
+  .score-val{color:#fbbf24;font-size:clamp(17px,2.4vh,22px);transition:transform .2s;}
+  .score-pop{transform:scale(1.28);}
+  .timer-line{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+  .bar{height:9px;border-radius:99px;background:rgba(255,255,255,.10);overflow:hidden;margin-top:5px;}
+  .bar-fill{height:100%;width:100%;border-radius:99px;transition:width .25s linear, background .4s;}
+  /* 20 кредитов ⚡ в 2 ряда по 10 */
+  .hearts{
+    display:flex;flex-wrap:wrap;gap:2px;
+    max-width:160px;line-height:1;
+  }
+  .heart{font-size:12px;transition:.25s;}
+  .heart.lost{opacity:.14;filter:grayscale(1);transform:scale(.82);}
+  .combo-pill{
+    align-self:center;margin-left:auto;
+    padding:6px 14px;border-radius:999px;font-weight:900;font-size:15px;
+    background:linear-gradient(135deg,#f97316,#ef4444);
+    box-shadow:0 0 18px rgba(249,115,22,.6);
+    opacity:0;transform:scale(.7);transition:.25s;
+  }
+  .combo-pill.on{opacity:1;transform:scale(1);animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+
+  .qprogress{height:6px;border-radius:99px;background:rgba(255,255,255,.07);margin:10px 2px 0;overflow:hidden;}
+  .qprogress-fill{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#22d3ee,#a855f7);transition:width .35s;}
+
+  /* ===== ВОПРОС ===== */
+  .q-area{flex:1;overflow-y:auto;overflow-x:hidden;padding:14px 4px 8px;display:flex;flex-direction:column;}
+  .q-area::-webkit-scrollbar{width:8px;}
+  .q-area::-webkit-scrollbar-thumb{background:rgba(120,160,255,.3);border-radius:9px;}
+  .q-card{
+    width:100%;max-width:920px;margin:0 auto;flex:1;
+    display:flex;flex-direction:column;gap:14px;
+    animation:cardIn .3s ease;
+  }
+  @keyframes cardIn{from{opacity:0;transform:translateY(14px) scale(.99);}to{opacity:1;transform:none;}}
+  .q-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+  .q-num{font-size:12.5px;font-weight:800;letter-spacing:.6px;color:#93c5fd;background:rgba(59,130,246,.16);padding:5px 12px;border-radius:999px;border:1px solid rgba(59,130,246,.3);}
+  .q-type{font-size:12.5px;font-weight:800;letter-spacing:.4px;color:#e9d5ff;background:rgba(168,85,247,.16);padding:5px 12px;border-radius:999px;border:1px solid rgba(168,85,247,.35);}
+  .q-text{font-size:clamp(17px,2.7vh,23px);font-weight:800;line-height:1.35;word-break:break-word;}
+  .q-body{display:flex;flex-direction:column;gap:12px;}
+
+  .options{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;}
+  .option{
+    display:flex;align-items:center;gap:12px;text-align:left;
+    padding:14px 16px;border-radius:14px;cursor:pointer;
+    font-size:clamp(14px,1.95vh,16.5px);font-weight:600;color:var(--text);
+    background:rgba(91,140,255,.10);
+    border:2px solid rgba(120,160,255,.22);
+    transition:transform .12s, background .2s, border-color .2s;
+    font-family:inherit;
+  }
+  .option:hover{background:rgba(91,140,255,.22);border-color:rgba(120,160,255,.5);transform:translateY(-2px);}
+  .option:active{transform:translateY(1px) scale(.995);}
+  .opt-key{
+    flex:0 0 32px;height:32px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:900;font-size:14px;
+    background:linear-gradient(135deg,#5b8cff,#a855f7);color:#fff;
+  }
+  .opt-text{flex:1;}
+  .option.correct{background:rgba(34,197,94,.25);border-color:#22c55e;box-shadow:0 0 22px rgba(34,197,94,.4);}
+  .option.correct .opt-key{background:linear-gradient(135deg,#22c55e,#16a34a);}
+  .option.wrong{background:rgba(239,68,68,.22);border-color:#ef4444;animation:shake .4s;}
+  .option.wrong .opt-key{background:linear-gradient(135deg,#ef4444,#b91c1c);}
+  @keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-8px);}40%{transform:translateX(8px);}60%{transform:translateX(-5px);}80%{transform:translateX(5px);}}
+
+  .tf-options{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .tf-btn{
+    padding:clamp(18px,4vh,34px) 10px;border-radius:18px;cursor:pointer;
+    font-size:clamp(16px,2.4vh,21px);font-weight:900;color:#fff;font-family:inherit;
+    background:linear-gradient(135deg,rgba(91,140,255,.28),rgba(168,85,247,.28));
+    border:2px solid rgba(120,160,255,.35);
+    transition:transform .12s, background .2s, border-color .2s;
+  }
+  .tf-btn:hover{transform:translateY(-3px);background:linear-gradient(135deg,rgba(91,140,255,.45),rgba(168,85,247,.45));}
+  .tf-btn:active{transform:translateY(2px);}
+  .tf-btn.correct{background:rgba(34,197,94,.35);border-color:#22c55e;}
+  .tf-btn.wrong{background:rgba(239,68,68,.3);border-color:#ef4444;animation:shake .4s;}
+
+  .match-wrap{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .match-col{display:flex;flex-direction:column;gap:8px;}
+  .match-item{
+    padding:12px 15px;border-radius:13px;cursor:pointer;text-align:left;
+    font-size:clamp(13.5px,1.9vh,16px);font-weight:600;color:var(--text);font-family:inherit;
+    background:rgba(91,140,255,.10);
+    border:2px solid rgba(120,160,255,.22);
+    transition:.18s;word-break:break-word;
+  }
+  .match-item:hover{background:rgba(91,140,255,.22);}
+  .match-item.selected{border-color:#fbbf24;background:rgba(251,191,36,.20);box-shadow:0 0 16px rgba(251,191,36,.35);}
+  .match-item.matched{border-color:#22c55e;background:rgba(34,197,94,.18);color:#bbf7d0;cursor:default;opacity:.9;}
+  .match-item.badflash{border-color:#ef4444;background:rgba(239,68,68,.28);animation:shake .4s;}
+
+  .pool{
+    display:flex;flex-wrap:wrap;gap:9px;min-height:56px;
+    padding:12px;border-radius:16px;
+    background:rgba(255,255,255,.035);
+    border:2px dashed rgba(120,160,255,.22);
+  }
+  .pool:empty::after{content:'Все карточки распределены ✓';color:var(--muted);font-size:13px;align-self:center;}
+  .card{
+    padding:10px 15px;border-radius:12px;cursor:pointer;font-family:inherit;
+    font-size:clamp(13px,1.85vh,15.5px);font-weight:700;color:#fff;
+    background:linear-gradient(135deg,#3b5bdb,#7048e8);
+    border:none;
+    box-shadow:0 4px 0 rgba(0,0,0,.35);
+    transition:transform .12s, box-shadow .12s;
+  }
+  .card:hover{transform:translateY(-2px);}
+  .card:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.35);}
+  .card.selected{outline:3px solid #fbbf24;outline-offset:2px;transform:translateY(-3px);}
+  .card.wrong{background:linear-gradient(135deg,#ef4444,#991b1b);animation:shake .4s;}
+
+  .bins{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;}
+  .bin{
+    border:2px dashed rgba(120,160,255,.32);
+    border-radius:16px;padding:10px;min-height:120px;
+    background:rgba(91,140,255,.05);
+    transition:.2s;cursor:pointer;
+  }
+  .bin:hover{background:rgba(91,140,255,.12);}
+  .bin.over{border-color:#22d3ee;background:rgba(34,211,238,.14);box-shadow:0 0 24px rgba(34,211,238,.25);}
+  .bin-title{font-weight:800;font-size:14px;margin-bottom:8px;letter-spacing:.3px;}
+  .bin-items{display:flex;flex-wrap:wrap;gap:8px;min-height:40px;}
+
+  .seq-box{
+    border:2px dashed rgba(120,160,255,.32);border-radius:16px;
+    padding:12px;min-height:78px;background:rgba(91,140,255,.06);
+  }
+  .seq-label{font-size:11.5px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-weight:800;margin-bottom:8px;}
+  .seq{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-height:36px;}
+  .seq:empty::after{content:'Нажимай элементы снизу в правильном порядке…';color:var(--muted);font-size:13px;}
+  .pool-order{min-height:56px;}
+  .order-item{
+    padding:10px 15px;border-radius:12px;cursor:pointer;font-family:inherit;
+    font-size:clamp(13px,1.85vh,15.5px);font-weight:700;color:#fff;
+    background:linear-gradient(135deg,#0891b2,#0e7490);
+    border:none;box-shadow:0 4px 0 rgba(0,0,0,.35);
+    transition:transform .12s, box-shadow .12s;
+  }
+  .order-item:hover{transform:translateY(-2px);}
+  .order-item:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.35);}
+  .order-item.in-seq{background:linear-gradient(135deg,#7c3aed,#5b21b6);}
+  .order-item.wrong{background:linear-gradient(135deg,#ef4444,#991b1b);animation:shake .4s;}
+
+  .btn-check{
+    align-self:center;margin-top:4px;
+    padding:12px 34px;border-radius:14px;border:none;cursor:pointer;
+    font-family:inherit;font-size:16px;font-weight:800;color:#fff;
+    background:linear-gradient(135deg,#22c55e,#16a34a);
+    box-shadow:0 6px 0 #14532d, 0 10px 24px rgba(34,197,94,.35);
+    transition:transform .12s, box-shadow .12s, filter .2s;
+  }
+  .btn-check:hover{filter:brightness(1.1);}
+  .btn-check:active{transform:translateY(4px);box-shadow:0 2px 0 #14532d;}
+  .btn-check:disabled{opacity:.5;cursor:not-allowed;}
+
+  /* ===== ТОСТЫ ===== */
+  #toasts{
+    position:fixed;top:18px;left:50%;transform:translateX(-50%);
+    z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center;
+    pointer-events:none;
+  }
+  .toast{
+    padding:12px 26px;border-radius:14px;font-weight:800;font-size:16px;
+    background:rgba(20,28,55,.96);
+    border:2px solid rgba(120,160,255,.4);
+    box-shadow:0 14px 40px rgba(0,0,0,.6);
+    opacity:0;transform:translateY(-14px) scale(.94);
+    transition:.3s cubic-bezier(.2,1.3,.5,1);
+    text-align:center;
+  }
+  .toast.show{opacity:1;transform:none;}
+  .toast.good{border-color:#22c55e;box-shadow:0 0 26px rgba(34,197,94,.5),0 14px 40px rgba(0,0,0,.6);color:#bbf7d0;}
+  .toast.bad{border-color:#ef4444;box-shadow:0 0 26px rgba(239,68,68,.5),0 14px 40px rgba(0,0,0,.6);color:#fecaca;}
+  .toast.ach{border-color:#fbbf24;box-shadow:0 0 26px rgba(251,191,36,.55),0 14px 40px rgba(0,0,0,.6);color:#fde68a;}
+  .toast-sub{font-size:12.5px;font-weight:600;opacity:.85;margin-top:3px;}
+
+  /* ===== БАННЕР УРОВНЯ ===== */
+  .level-banner{
+    position:absolute;inset:0;z-index:900;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    background:radial-gradient(circle at center, rgba(91,140,255,.30), rgba(5,8,26,.92) 65%);
+    opacity:0;pointer-events:none;transition:.4s;
+  }
+  .level-banner.show{opacity:1;}
+  .lb-emoji{font-size:64px;animation:floaty 1.4s ease-in-out infinite;}
+  .lb-title{font-size:clamp(24px,4.4vh,40px);font-weight:900;
+    background:linear-gradient(90deg,#7dd3fc,#a78bfa,#f0abfc);
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .lb-sub{color:var(--muted);font-size:15px;font-weight:700;letter-spacing:.6px;}
+
+  /* ===== ФИНАЛ ===== */
+  #endScreen{align-items:center;justify-content:center;overflow-y:auto;}
+  .end-inner{text-align:center;max-width:700px;width:100%;}
+  .end-emoji{font-size:clamp(46px,8vh,74px);animation:floaty 2.6s ease-in-out infinite;}
+  .end-inner h2{
+    font-size:clamp(22px,3.8vh,34px);font-weight:900;margin:10px 0 6px;
+    background:linear-gradient(90deg,#7dd3fc,#a78bfa,#f0abfc);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .end-inner p{color:var(--muted);font-size:14.5px;margin-bottom:18px;line-height:1.5;}
+  .end-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+  .end-stats div{
+    background:rgba(91,140,255,.10);border:1px solid var(--card-brd);
+    border-radius:16px;padding:12px 6px;display:flex;flex-direction:column;gap:3px;
+  }
+  .end-stats b{font-size:clamp(17px,2.6vh,24px);color:#fbbf24;}
+  .end-stats span{font-size:11.5px;color:var(--muted);letter-spacing:.4px;}
+  .ach-unlocked{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:20px;}
+  @media (max-width:640px){
+    .end-stats{grid-template-columns:repeat(2,1fr);}
+    .tf-options{grid-template-columns:1fr;}
+    .match-wrap{grid-template-columns:1fr;}
+    .hearts{max-width:130px;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <section id="startScreen" class="screen active">
+    <div class="start-inner">
+      <div class="logo">📁💾🗂️</div>
+      <h1>ФАЙЛОВЫЙ КВЕСТ</h1>
+      <p class="subtitle">Практическая работа «Организация хранения данных» · 6 класс · Информатика и ИИ</p>
+      <div class="info-grid">
+        <div class="info-card">🎯 <b>30 заданий</b><span>3 уровня сложности</span></div>
+        <div class="info-card">⚡ <b>20 кредитов</b><span>ошибка −1 кредит</span></div>
+        <div class="info-card">⏱️ <b>25 минут</b><span>общее время</span></div>
+        <div class="info-card">🔥 <b>Комбо ×5</b><span>за серию ответов</span></div>
+      </div>
+      <button id="startBtn" class="btn-primary">🚀 НАЧАТЬ ИГРУ</button>
+      <div class="start-footer">
+        <div class="best">🏆 Рекорд: <b id="bestScore">0</b></div>
+        <div class="ach-list" id="achList"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="gameScreen" class="screen">
+    <header class="hud">
+      <div class="hud-block">
+        <div class="hud-label">Уровень</div>
+        <div class="hud-value" id="levelName">🌱 Новичок</div>
+      </div>
+      <div class="hud-block timer-block">
+        <div class="timer-line">
+          <span class="hud-label">⏱️ Время</span>
+          <span class="hud-value" id="timeText">25:00</span>
+        </div>
+        <div class="bar"><div class="bar-fill" id="timeBar"></div></div>
+      </div>
+      <div class="hud-block">
+        <div class="hud-label">Очки</div>
+        <div class="hud-value score-val" id="scoreText">0</div>
+      </div>
+      <div class="hud-block">
+        <div class="hud-label">Кредиты</div>
+        <div class="hearts" id="hearts"></div>
+      </div>
+      <div class="combo-pill" id="comboPill">🔥 ×2</div>
+    </header>
+    <div class="qprogress"><div class="qprogress-fill" id="qBar"></div></div>
+    <main id="questionArea" class="q-area"></main>
+  </section>
+
+  <section id="endScreen" class="screen">
+    <div class="end-inner">
+      <div class="end-emoji" id="endEmoji">🏆</div>
+      <h2 id="endTitle">Победа!</h2>
+      <p id="endSubtitle"></p>
+      <div class="end-stats">
+        <div><b id="endScore">0</b><span>ОЧКОВ</span></div>
+        <div><b id="endCorrect">0</b><span>ВЕРНЫХ</span></div>
+        <div><b id="endCombo">0</b><span>МАКС. КОМБО</span></div>
+        <div><b id="endCredits">0</b><span>КРЕДИТОВ</span></div>
+      </div>
+      <div class="ach-unlocked" id="endAch"></div>
+      <button class="btn-primary" id="restartBtn">🔄 ИГРАТЬ СНОВА</button>
+    </div>
+  </section>
+
+  <div class="level-banner" id="levelBanner">
+    <div class="lb-emoji" id="lbEmoji">🎉</div>
+    <div class="lb-title" id="lbTitle">Уровень 2</div>
+    <div class="lb-sub" id="lbSub">Специалист</div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+/* =========================================================
+   1. ДАННЫЕ: 30 ЗАДАНИЙ
+   ========================================================= */
+const QUESTIONS = [
+  /* ---------- БЛОК 1 · НОВИЧОК ---------- */
+  {
+    type:'choice',
+    q:'Что такое файловая система?',
+    options:[
+      'Структура (порядок) хранения файлов и папок на диске',
+      'Программа для просмотра видео',
+      'Устройство для печати документов',
+      'Игра для создания рисунков'
+    ],
+    correct:0
+  },
+  {
+    type:'truefalse',
+    q:'Корневой каталог находится на самом верхнем уровне логического диска.',
+    answer:true
+  },
+  {
+    type:'matching',
+    q:'Сопоставь расширение файла и тип данных',
+    pairs:[
+      ['.docx','Текстовый документ'],
+      ['.jpg','Графическое изображение'],
+      ['.mp3','Звук (аудио)'],
+      ['.mp4','Видео']
+    ]
+  },
+  {
+    type:'category',
+    q:'Распредели объекты по категориям «Файлы» и «Папки»',
+    bins:['📄 Файлы','📁 Папки'],
+    items:[
+      ['doklad.docx','📄 Файлы'],
+      ['foto.jpg','📄 Файлы'],
+      ['Учеба','📁 Папки'],
+      ['Игры','📁 Папки']
+    ]
+  },
+  {
+    type:'truefalse',
+    q:'Операционная система отвечает за организацию хранения файлов на дисках.',
+    answer:true
+  },
+  {
+    type:'choice',
+    q:'Какое расширение принадлежит исполняемому файлу программы?',
+    options:['.exe','.txt','.jpg','.docx'],
+    correct:0
+  },
+  {
+    type:'matching',
+    q:'Сопоставь программу и файл, который она создаёт',
+    pairs:[
+      ['MS Word','.docx'],
+      ['MS Paint','.png'],
+      ['Python','.py'],
+      ['MS PowerPoint','.pptx']
+    ]
+  },
+  {
+    type:'order',
+    q:'Восстанови правильный порядок вложенности',
+    items:['Диск C:','Папка «Учеба»','Папка «Информатика»','Файл «Урок.docx»']
+  },
+  {
+    type:'truefalse',
+    q:'Расширение файла отделяется от его имени точкой.',
+    answer:true
+  },
+  {
+    type:'choice',
+    q:'Какой тип данных содержит файл с расширением .xlsx?',
+    options:['Электронная таблица','Текст с картинками','Музыкальная запись','Компьютерная игра'],
+    correct:0
+  },
+
+  /* ---------- БЛОК 2 · СПЕЦИАЛИСТ ---------- */
+  {
+    type:'choice',
+    q:'Какой символ ЗАПРЕЩЕНО использовать в имени файла в Windows?',
+    options:['Двоеточие  :','Подчёркивание  _','Дефис  -','Пробел'],
+    correct:0
+  },
+  {
+    type:'truefalse',
+    q:'Имя файла «Отчет:2026.docx» является допустимым в ОС Windows.',
+    answer:false
+  },
+  {
+    type:'category',
+    q:'Распредели имена файлов: разрешённые и запрещённые',
+    bins:['✅ Разрешённые','⛔ Запрещённые'],
+    items:[
+      ['My_Doc.docx','✅ Разрешённые'],
+      ['Report-2026.pdf','✅ Разрешённые'],
+      ['Photo_1.png','✅ Разрешённые'],
+      ['test*.txt','⛔ Запрещённые'],
+      ['A/B.jpg','⛔ Запрещённые'],
+      ['doc?.png','⛔ Запрещённые']
+    ]
+  },
+  {
+    type:'matching',
+    q:'Соотнеси действие и комбинацию клавиш',
+    pairs:[
+      ['Ctrl + C','Копировать'],
+      ['Ctrl + X','Вырезать'],
+      ['Ctrl + V','Вставить'],
+      ['Delete','Переместить в Корзину']
+    ]
+  },
+  {
+    type:'order',
+    q:'Восстанови порядок переименования файла',
+    items:['Выделить файл','Нажать правую кнопку мыши','Выбрать «Переименовать»','Ввести новое имя','Нажать Enter']
+  },
+  {
+    type:'truefalse',
+    q:'При удалении файла клавишей Delete он перемещается в Корзину, откуда его можно восстановить.',
+    answer:true
+  },
+  {
+    type:'choice',
+    q:'Чем отличается операция копирования файла от перемещения?',
+    options:[
+      'При копировании создаётся дубликат, а при перемещении файл меняет место',
+      'Ничем, это одна и та же операция',
+      'При копировании файл удаляется навсегда',
+      'При перемещении меняется расширение файла'
+    ],
+    correct:0
+  },
+  {
+    type:'category',
+    q:'Распредели расширения по типам файлов',
+    bins:['📝 Текстовые','🖼️ Графические'],
+    items:[
+      ['.docx','📝 Текстовые'],
+      ['.txt','📝 Текстовые'],
+      ['.rtf','📝 Текстовые'],
+      ['.png','🖼️ Графические'],
+      ['.jpg','🖼️ Графические'],
+      ['.bmp','🖼️ Графические']
+    ]
+  },
+  {
+    type:'truefalse',
+    q:'В одной и той же папке не могут находиться два файла с полностью одинаковыми именами и расширениями.',
+    answer:true
+  },
+  {
+    type:'choice',
+    q:'Что указывает операционной системе, с помощью какой программы открыть файл?',
+    options:['Расширение файла','Размер файла','Дата создания файла','Имя папки'],
+    correct:0
+  },
+
+  /* ---------- БЛОК 3 · АРХИТЕКТОР ---------- */
+  {
+    type:'order',
+    q:'Собери полный путь к файлу',
+    items:['D:\\','Школа\\','6_класс\\','Информатика\\','Практика.docx']
+  },
+  {
+    type:'choice',
+    q:'Определи непосредственную папку хранения файла по пути  C:\\Users\\Student\\Desktop\\Project.pptx',
+    options:['Папка Desktop','Папка Student','Папка Users','Диск C:'],
+    correct:0
+  },
+  {
+    type:'matching',
+    q:'Соотнеси путь к файлу и описание местоположения',
+    pairs:[
+      ['C:\\1.txt','Файл в корневом каталоге'],
+      ['C:\\A\\1.txt','Файл в папке 1-го уровня'],
+      ['C:\\A\\B\\1.txt','Файл в папке 2-го уровня']
+    ]
+  },
+  {
+    type:'truefalse',
+    q:'Файлы  D:\\Data\\file.txt  и  C:\\Data\\file.txt  находятся на разных логических дисках.',
+    answer:true
+  },
+  {
+    type:'category',
+    q:'Классифицируй пути: корректные и ошибочные',
+    bins:['✅ Корректные','⛔ Ошибочные'],
+    items:[
+      ['C:\\School\\Task.docx','✅ Корректные'],
+      ['D:\\Photo\\1.jpg','✅ Корректные'],
+      ['C:/School*Task.docx','⛔ Ошибочные'],
+      ['E:\\Docs?\\Plan.txt','⛔ Ошибочные']
+    ]
+  },
+  {
+    type:'order',
+    q:'Построй дерево каталогов проекта',
+    items:['Диск C:\\','Папка «Проект»','Подпапка «Изображения»','Файл «logo.png»']
+  },
+  {
+    type:'choice',
+    q:'Если переместить файл info.txt из C:\\Docs в D:\\Archive, как изменится его описание?',
+    options:[
+      'Изменится его полный путь, а сам файл останется прежним',
+      'Изменится содержимое файла',
+      'Файл превратится в папку',
+      'Изменится только расширение файла'
+    ],
+    correct:0
+  },
+  {
+    type:'matching',
+    q:'Соотнеси запрещённый символ и причину запрета',
+    pairs:[
+      ['\\  и  /','Разделители папок в пути'],
+      ['*  и  ?','Символы-маски для поиска'],
+      [':','Разделитель имени диска']
+    ]
+  },
+  {
+    type:'truefalse',
+    q:'Полный путь к файлу начинается с логического диска и перечисляет все вложенные папки через разделитель «\\».',
+    answer:true
+  },
+  {
+    type:'choice',
+    q:'Какой полный путь будет у файла zadanie.docx, если он лежит в папке «Уроки», которая находится в папке «6_класс» на диске D:?',
+    options:[
+      'D:\\6_класс\\Уроки\\zadanie.docx',
+      'D:\\Уроки\\6_класс\\zadanie.docx',
+      'Уроки\\6_класс\\zadanie.docx',
+      'D:\\6_класс\\zadanie.docx'
+    ],
+    correct:0
+  }
+];
+
+/* =========================================================
+   2. КОНСТАНТЫ И ХРАНИЛИЩА
+   ========================================================= */
+const TOTAL_TIME   = 25 * 60;
+const MAX_CREDITS  = 20;           /* 20 кредитов вместо 10 жизней */
+const ACH_KEY      = 'filequest_achievements_v2';
+const BEST_KEY     = 'filequest_best_v2';
+
+const TYPE_LABEL = {
+  choice:   '🎯 Выбор ответа',
+  truefalse:'⚡ Верно / Неверно',
+  matching: '🔗 Соответствия',
+  category: '🗂️ Сортировка',
+  order:    '🧩 Порядок'
+};
+
+const LEVELS = [
+  { name:'Новичок',    icon:'🌱', sub:'Базовые термины и типы файлов' },
+  { name:'Специалист', icon:'⚙️', sub:'Правила именования и операции' },
+  { name:'Архитектор', icon:'🏆', sub:'Пути к файлам и структура' }
+];
+
+const ACHIEVEMENTS = {
+  first:   { icon:'📄', name:'Первый файл',      desc:'Первый правильный ответ' },
+  folders: { icon:'📁', name:'Мастер папок',     desc:'Пройден блок «Новичок»' },
+  paths:   { icon:'🗂️', name:'Архитектор путей', desc:'Пройдены все 30 заданий' },
+  combo:   { icon:'🔥', name:'Комбо-мастер',     desc:'Серия из 5 верных ответов' },
+  keeper:  { icon:'💾', name:'Хранитель данных', desc:'Победа с 10+ кредитами' }
+};
+
+/* =========================================================
+   3. СОСТОЯНИЕ
+   ========================================================= */
+const state = {
+  idx: 0,
+  credits: MAX_CREDITS,
+  maxCredits: MAX_CREDITS,
+  score: 0,
+  combo: 0,
+  maxCombo: 0,
+  correctCount: 0,
+  timeLeft: TOTAL_TIME,
+  endTime: 0,
+  timerId: null,
+  running: false,
+  answered: false,
+  qStart: 0,
+  achievements: {}
+};
+
+/* =========================================================
+   4. УТИЛИТЫ
+   ========================================================= */
+function shuffle(arr){
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+  }
+  return a;
+}
+function h(tag, cls, text){
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function div(cls, text){ return h('div', cls, text); }
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const target = document.getElementById(id);
+  if (target) target.classList.add('active');
+}
+
+/* =========================================================
+   5. АУДИО
+   ========================================================= */
+let audioCtx = null;
+function ensureCtx(){
+  try {
+    if (!audioCtx){
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      audioCtx = new AC();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  } catch(e){ return null; }
+}
+function playTone(freq, startOffset, duration, type, vol){
+  const ctx = ensureCtx();
+  if (!ctx) return;
+  const t0 = ctx.currentTime + startOffset;
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.type = type || 'triangle';
+  osc.frequency.setValueAtTime(freq, t0);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol || 0.14, t0 + 0.03);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+  osc.connect(g);
+  g.connect(ctx.destination);
+  osc.start(t0);
+  osc.stop(t0 + duration + 0.06);
+}
+function playVictory(){
+  [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
+    playTone(f, i * 0.16, 0.42, 'triangle', 0.16);
+    playTone(f / 2, i * 0.16, 0.42, 'sine', 0.07);
+  });
+  playTone(1318.51, 0.68, 0.85, 'triangle', 0.16);
+}
+function playDefeat(){
+  [392.00, 349.23, 293.66, 220.00].forEach((f, i) => {
+    playTone(f, i * 0.19, 0.5, 'sawtooth', 0.10);
+  });
+  playTone(164.81, 0.82, 0.9, 'sawtooth', 0.10);
+}
+
+/* =========================================================
+   6. ДОСТИЖЕНИЯ / РЕКОРД
+   ========================================================= */
+function loadAchievements(){
+  try {
+    const raw = localStorage.getItem(ACH_KEY);
+    return raw ? (JSON.parse(raw) || {}) : {};
+  } catch(e){ return {}; }
+}
+function saveAchievements(){
+  try { localStorage.setItem(ACH_KEY, JSON.stringify(state.achievements)); } catch(e){}
+}
+function unlockAchievement(key){
+  if (state.achievements[key]) return;
+  const a = ACHIEVEMENTS[key];
+  if (!a) return;
+  state.achievements[key] = true;
+  saveAchievements();
+  showToast(a.icon + ' ' + a.name, 'ach', 'Новое достижение!');
+}
+function renderAchList(container){
+  if (!container) return;
+  container.innerHTML = '';
+  Object.keys(ACHIEVEMENTS).forEach(k => {
+    const a = ACHIEVEMENTS[k];
+    const chip = div('ach-chip' + (state.achievements[k] ? ' on' : ''));
+    chip.appendChild(h('span', null, a.icon));
+    chip.appendChild(h('span', null, a.name));
+    chip.title = a.desc;
+    container.appendChild(chip);
+  });
+}
+
+/* =========================================================
+   7. ТОСТЫ
+   ========================================================= */
+function showToast(text, type, sub){
+  const box = document.getElementById('toasts');
+  if (!box) return;
+  const t = div('toast ' + (type || ''));
+  t.appendChild(div('toast-main', text));
+  if (sub) t.appendChild(div('toast-sub', sub));
+  box.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => {
+    t.classList.remove('show');
+    setTimeout(() => t.remove(), 400);
+  }, 1500);
+}
+
+/* =========================================================
+   8. HUD
+   ========================================================= */
+function updateHUD(){
+  /* 20 кредитов ⚡ */
+  const creditsEl = document.getElementById('hearts');
+  if (creditsEl){
+    let html = '';
+    for (let i = 0; i < state.maxCredits; i++){
+      html += '<span class="heart' + (i < state.credits ? '' : ' lost') + '">⚡</span>';
+    }
+    creditsEl.innerHTML = html;
+  }
+
+  const scoreEl = document.getElementById('scoreText');
+  if (scoreEl && scoreEl.textContent !== String(state.score)){
+    scoreEl.textContent = state.score;
+    scoreEl.classList.add('score-pop');
+    setTimeout(() => scoreEl.classList.remove('score-pop'), 200);
+  }
+
+  const lvlEl = document.getElementById('levelName');
+  if (lvlEl){
+    const lvl = Math.min(2, Math.floor(state.idx / 10));
+    lvlEl.textContent = LEVELS[lvl].icon + ' ' + LEVELS[lvl].name;
+  }
+
+  const qBar = document.getElementById('qBar');
+  if (qBar) qBar.style.width = Math.min(100, (state.idx / QUESTIONS.length) * 100) + '%';
+
+  const pill = document.getElementById('comboPill');
+  if (pill){
+    if (state.combo >= 2){
+      const mult = state.combo >= 5 ? 5 : state.combo >= 3 ? 3 : 2;
+      pill.textContent = '🔥 ×' + mult;
+      pill.classList.add('on');
+    } else {
+      pill.classList.remove('on');
+    }
+  }
+}
+
+function updateTimerUI(){
+  const t = Math.max(0, state.timeLeft);
+  const m = Math.floor(t / 60);
+  const s = Math.floor(t % 60);
+  const timeText = document.getElementById('timeText');
+  if (timeText) timeText.textContent =
+    String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+
+  const pct = Math.max(0, Math.min(100, (t / TOTAL_TIME) * 100));
+  const bar = document.getElementById('timeBar');
+  if (bar){
+    bar.style.width = pct + '%';
+    bar.style.background =
+      pct > 50 ? 'linear-gradient(90deg,#22d3ee,#34d399)' :
+      pct > 20 ? 'linear-gradient(90deg,#fbbf24,#f59e0b)' :
+                 'linear-gradient(90deg,#f87171,#ef4444)';
+  }
+}
+
+/* =========================================================
+   9. ЛОГИКА ОТВЕТОВ
+   ========================================================= */
+
+/* Ошибка: −1 кредит и СРАЗУ переход к следующему заданию */
+function handleWrongAnswer(){
+  state.combo = 0;
+  state.credits = Math.max(0, state.credits - 1);
+  updateHUD();
+
+  if (state.credits <= 0){
+    state.answered = true;
+    clearInterval(state.timerId);
+    showToast('💥 Кредиты закончились!', 'bad', 'Игра завершена');
+    setTimeout(() => endGame(false), 1100);
+    return;
+  }
+
+  state.answered = true;
+  showToast('❌ Ошибка!  −1 кредит', 'bad', 'Следующее задание…');
+  setTimeout(() => nextQuestion(), 900);
+}
+
+function correctAnswer(){
+  if (state.answered) return;
+  state.answered = true;
+
+  const elapsed = (Date.now() - state.qStart) / 1000;
+  state.combo++;
+  state.maxCombo = Math.max(state.maxCombo, state.combo);
+
+  const base = 100;
+  const speedBonus = elapsed < 10 ? Math.round(50 * (10 - elapsed) / 10) : 0;
+  const mult = state.combo >= 5 ? 5 : state.combo >= 3 ? 3 : state.combo >= 2 ? 2 : 1;
+  const gain = (base + speedBonus) * mult;
+
+  state.score += gain;
+  state.correctCount++;
+
+  if (state.correctCount === 1) unlockAchievement('first');
+  if (state.combo >= 5) unlockAchievement('combo');
+
+  updateHUD();
+
+  let sub = 'Множитель ×' + mult;
+  if (speedBonus > 0) sub = 'Скорость +' + speedBonus + ' · ×' + mult;
+  showToast('✅ Верно!  +' + gain, 'good', sub);
+
+  setTimeout(() => nextQuestion(), 1000);
+}
+
+/* =========================================================
+   10. РЕНДЕР ЗАДАНИЙ
+   ========================================================= */
+function renderQuestion(){
+  const q = QUESTIONS[state.idx];
+  if (!q) return;
+
+  state.answered = false;
+  state.qStart = Date.now();
+
+  const area = document.getElementById('questionArea');
+  area.innerHTML = '';
+
+  const card = div('q-card');
+
+  const head = div('q-head');
+  head.appendChild(h('span', 'q-num', 'Задание ' + (state.idx + 1) + ' из 30'));
+  head.appendChild(h('span', 'q-type', TYPE_LABEL[q.type] || ''));
+  card.appendChild(head);
+
+  card.appendChild(h('h2', 'q-text', q.q));
+
+  const body = div('q-body');
+  card.appendChild(body);
+  area.appendChild(card);
+
+  switch (q.type){
+    case 'choice':    buildChoice(q, body);    break;
+    case 'truefalse': buildTrueFalse(q, body); break;
+    case 'matching':  buildMatching(q, body);  break;
+    case 'category':  buildCategory(q, body);  break;
+    case 'order':     buildOrder(q, body);     break;
+  }
+
+  updateHUD();
+}
+
+/* --- Тип 1: выбор ответа --- */
+function buildChoice(q, body){
+  const correctText = q.options[q.correct];
+  const opts = shuffle(q.options.map((text, i) => ({ text: text, ok: i === q.correct })));
+  const box = div('options');
+  const letters = ['A','B','C','D','E'];
+
+  opts.forEach((o, i) => {
+    const b = h('button', 'option');
+    b.type = 'button';
+    b.appendChild(h('span', 'opt-key', letters[i] || '•'));
+    b.appendChild(h('span', 'opt-text', o.text));
+
+    b.addEventListener('click', () => {
+      if (state.answered) return;
+      if (o.ok){
+        b.classList.add('correct');
+        correctAnswer();
+      } else {
+        b.classList.add('wrong');
+        /* подсветим правильный вариант на долю секунды */
+        Array.from(box.children).forEach(btn => {
+          const t = btn.querySelector('.opt-text');
+          if (t && t.textContent === correctText) btn.classList.add('correct');
+        });
+        handleWrongAnswer();
+      }
+    });
+
+    box.appendChild(b);
+  });
+
+  body.appendChild(box);
+}
+
+/* --- Тип 2: верно / неверно --- */
+function buildTrueFalse(q, body){
+  const opts = shuffle([
+    { text:'✅ Верно',   ok: q.answer === true },
+    { text:'❌ Неверно', ok: q.answer === false }
+  ]);
+  const box = div('tf-options');
+
+  opts.forEach(o => {
+    const b = h('button', 'tf-btn', o.text);
+    b.type = 'button';
+    b.dataset.ok = o.ok ? '1' : '0';
+
+    b.addEventListener('click', () => {
+      if (state.answered) return;
+      if (o.ok){
+        b.classList.add('correct');
+        correctAnswer();
+      } else {
+        b.classList.add('wrong');
+        Array.from(box.children).forEach(x => {
+          if (x.dataset.ok === '1') x.classList.add('correct');
+        });
+        handleWrongAnswer();
+      }
+    });
+
+    box.appendChild(b);
+  });
+
+  body.appendChild(box);
+}
+
+/* --- Тип 3: соответствия --- */
+function buildMatching(q, body){
+  const lefts  = shuffle(q.pairs.map((p, i) => ({ text: p[0], i: i })));
+  const rights = shuffle(q.pairs.map((p, i) => ({ text: p[1], i: i })));
+
+  const wrap = div('match-wrap');
+  const colL = div('match-col');
+  const colR = div('match-col');
+
+  let selected = null;
+  let matched = 0;
+
+  lefts.forEach(o => {
+    const b = h('button', 'match-item', o.text);
+    b.type = 'button';
+    b.dataset.idx = o.i;
+    b.addEventListener('click', () => {
+      if (state.answered || b.classList.contains('matched')) return;
+      if (selected) selected.classList.remove('selected');
+      selected = b;
+      b.classList.add('selected');
+    });
+    colL.appendChild(b);
+  });
+
+  rights.forEach(o => {
+    const b = h('button', 'match-item', o.text);
+    b.type = 'button';
+    b.dataset.idx = o.i;
+    b.addEventListener('click', () => {
+      if (state.answered || b.classList.contains('matched') || !selected) return;
+
+      if (b.dataset.idx === selected.dataset.idx){
+        b.classList.add('matched');
+        selected.classList.add('matched');
+        selected.classList.remove('selected');
+        selected = null;
+        matched++;
+        if (matched === q.pairs.length) correctAnswer();
+      } else {
+        const s = selected;
+        b.classList.add('badflash');
+        s.classList.add('badflash');
+        s.classList.remove('selected');
+        selected = null;
+        handleWrongAnswer();
+      }
+    });
+    colR.appendChild(b);
+  });
+
+  wrap.appendChild(colL);
+  wrap.appendChild(colR);
+  body.appendChild(wrap);
+}
+
+/* --- Тип 4: сортировка по категориям --- */
+function buildCategory(q, body){
+  const pool = div('pool');
+  const binsWrap = div('bins');
+
+  const items = q.items.map((it, i) => ({ text: it[0], bin: it[1], id: i }));
+  const shuffled = shuffle(items);
+
+  let draggedCard = null;
+
+  shuffled.forEach(item => {
+    const c = h('button', 'card', item.text);
+    c.type = 'button';
+    c.dataset.bin = item.bin;
+    c.dataset.id = item.id;
+    c.draggable = true;
+
+    c.addEventListener('click', () => {
+      if (state.answered) return;
+      const inBin = c.parentElement && c.parentElement.classList.contains('bin-items');
+      if (inBin){
+        pool.appendChild(c);
+        c.classList.remove('selected');
+      } else {
+        const prev = pool.querySelector('.card.selected');
+        if (prev) prev.classList.remove('selected');
+        c.classList.add('selected');
+      }
+      updateCheck();
+    });
+
+    c.addEventListener('dragstart', e => {
+      draggedCard = c;
+      try { e.dataTransfer.setData('text/plain', String(item.id)); } catch(err){}
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    c.addEventListener('dragend', () => { draggedCard = null; });
+
+    pool.appendChild(c);
+  });
+
+  q.bins.forEach(binName => {
+    const bin = div('bin');
+    bin.dataset.bin = binName;
+    bin.appendChild(h('div', 'bin-title', binName));
+    const itemsBox = div('bin-items');
+    bin.appendChild(itemsBox);
+
+    bin.addEventListener('click', () => {
+      if (state.answered) return;
+      const sel = pool.querySelector('.card.selected');
+      if (sel){
+        itemsBox.appendChild(sel);
+        sel.classList.remove('selected');
+        updateCheck();
+      }
+    });
+    bin.addEventListener('dragover', e => {
+      e.preventDefault();
+      bin.classList.add('over');
+    });
+    bin.addEventListener('dragleave', () => bin.classList.remove('over'));
+    bin.addEventListener('drop', e => {
+      e.preventDefault();
+      bin.classList.remove('over');
+      if (draggedCard && !state.answered){
+        itemsBox.appendChild(draggedCard);
+        draggedCard.classList.remove('selected');
+        draggedCard = null;
+        updateCheck();
+      }
+    });
+
+    binsWrap.appendChild(bin);
+  });
+
+  const checkBtn = h('button', 'btn-check', '✅ Проверить');
+  checkBtn.type = 'button';
+  checkBtn.style.display = 'none';
+
+  function updateCheck(){
+    const remaining = pool.querySelectorAll('.card').length;
+    checkBtn.style.display = (remaining === 0 && !state.answered) ? 'inline-flex' : 'none';
+  }
+
+  checkBtn.addEventListener('click', () => {
+    if (state.answered) return;
+
+    const wrongCards = [];
+    Array.from(binsWrap.children).forEach(bin => {
+      const binName = bin.dataset.bin;
+      bin.querySelectorAll('.card').forEach(card => {
+        if (card.dataset.bin !== binName) wrongCards.push(card);
+      });
+    });
+
+    if (wrongCards.length === 0){
+      checkBtn.style.display = 'none';
+      correctAnswer();
+    } else {
+      wrongCards.forEach(c => c.classList.add('wrong'));
+      handleWrongAnswer();   /* сразу переход к следующему вопросу */
+    }
+  });
+
+  body.appendChild(pool);
+  body.appendChild(binsWrap);
+  body.appendChild(checkBtn);
+}
+
+/* --- Тип 5: восстановление порядка --- */
+function buildOrder(q, body){
+  const seqBox = div('seq-box');
+  seqBox.appendChild(div('seq-label', 'Ваш порядок:'));
+  const seq = div('seq');
+  seqBox.appendChild(seq);
+
+  const pool = div('pool pool-order');
+
+  const shuffled = shuffle(q.items.map((t, i) => ({ t: t, i: i })));
+
+  shuffled.forEach(item => {
+    const b = h('button', 'order-item', item.t);
+    b.type = 'button';
+    b.dataset.i = item.i;
+
+    b.addEventListener('click', () => {
+      if (state.answered) return;
+      if (b.parentElement === seq){
+        pool.appendChild(b);
+        b.classList.remove('in-seq');
+      } else {
+        seq.appendChild(b);
+        b.classList.add('in-seq');
+      }
+      checkOrder();
+    });
+
+    pool.appendChild(b);
+  });
+
+  function checkOrder(){
+    if (state.answered) return;
+    if (seq.children.length !== q.items.length) return;
+
+    const got = Array.from(seq.children).map(c => Number(c.dataset.i));
+    const ok = got.every((v, idx) => v === idx);
+
+    if (ok){
+      correctAnswer();
+    } else {
+      Array.from(seq.children).forEach(c => c.classList.add('wrong'));
+      handleWrongAnswer();   /* сразу переход к следующему вопросу */
+    }
+  }
+
+  body.appendChild(seqBox);
+  body.appendChild(pool);
+}
+
+/* =========================================================
+   11. ПЕРЕХОД МЕЖДУ ЗАДАНИЯМИ / УРОВНЯМИ
+   ========================================================= */
+function nextQuestion(){
+  if (!state.running) return;
+
+  state.idx++;
+
+  if (state.idx >= QUESTIONS.length){
+    endGame(true);
+    return;
+  }
+
+  const area = document.getElementById('questionArea');
+
+  if (state.idx === 10){
+    unlockAchievement('folders');
+    area.innerHTML = '';
+    showLevelBanner(1);
+    setTimeout(() => { if (state.running) renderQuestion(); }, 1900);
+    return;
+  }
+
+  if (state.idx === 20){
+    area.innerHTML = '';
+    showLevelBanner(2);
+    setTimeout(() => { if (state.running) renderQuestion(); }, 1900);
+    return;
+  }
+
+  renderQuestion();
+}
+
+function showLevelBanner(levelIndex){
+  const lvl = LEVELS[levelIndex];
+  const lbEmoji = document.getElementById('lbEmoji');
+  const lbTitle = document.getElementById('lbTitle');
+  const lbSub   = document.getElementById('lbSub');
+  const b       = document.getElementById('levelBanner');
+  if (lbEmoji) lbEmoji.textContent = lvl.icon;
+  if (lbTitle) lbTitle.textContent = 'Уровень ' + (levelIndex + 1);
+  if (lbSub)   lbSub.textContent = lvl.name + ' · ' + lvl.sub;
+  if (b){
+    b.classList.add('show');
+    setTimeout(() => b.classList.remove('show'), 1750);
+  }
+}
+
+/* =========================================================
+   12. ТАЙМЕР
+   ========================================================= */
+function startTimer(){
+  clearInterval(state.timerId);
+  state.endTime = Date.now() + TOTAL_TIME * 1000;
+  state.timeLeft = TOTAL_TIME;
+  updateTimerUI();
+
+  state.timerId = setInterval(() => {
+    if (!state.running) return;
+    state.timeLeft = (state.endTime - Date.now()) / 1000;
+    if (state.timeLeft <= 0){
+      state.timeLeft = 0;
+      updateTimerUI();
+      clearInterval(state.timerId);
+      endGame(false);
+      return;
+    }
+    updateTimerUI();
+  }, 200);
+}
+
+/* =========================================================
+   13. СТАРТ / ФИНАЛ
+   ========================================================= */
+function startGame(){
+  ensureCtx();
+
+  state.idx = 0;
+  state.credits = MAX_CREDITS;
+  state.score = 0;
+  state.combo = 0;
+  state.maxCombo = 0;
+  state.correctCount = 0;
+  state.timeLeft = TOTAL_TIME;
+  state.running = true;
+  state.answered = false;
+  state.achievements = loadAchievements();
+
+  const qa = document.getElementById('questionArea');
+  if (qa) qa.innerHTML = '';
+  const qb = document.getElementById('qBar');
+  if (qb) qb.style.width = '0%';
+
+  showScreen('gameScreen');
+  updateHUD();
+  startTimer();
+  renderQuestion();
+}
+
+function endGame(won){
+  if (!state.running) return;
+  state.running = false;
+  clearInterval(state.timerId);
+  state.answered = true;
+
+  if (won){
+    unlockAchievement('paths');
+    if (state.credits >= 10) unlockAchievement('keeper');
+    playVictory();
+  } else {
+    playDefeat();
+  }
+
+  try {
+    const best = Number(localStorage.getItem(BEST_KEY) || 0);
+    if (state.score > best) localStorage.setItem(BEST_KEY, String(state.score));
+  } catch(e){}
+
+  const timeUp = state.timeLeft <= 0;
+
+  const elEmoji = document.getElementById('endEmoji');
+  const elTitle = document.getElementById('endTitle');
+  const elSub   = document.getElementById('endSubtitle');
+  if (elEmoji) elEmoji.textContent = won ? '🏆' : (timeUp ? '⏰' : '💥');
+  if (elTitle) elTitle.textContent =
+    won ? 'Победа! Хранилище в порядке!' :
+          (timeUp ? 'Время вышло!' : 'Кредиты закончились!');
+  if (elSub) elSub.textContent =
+    won
+      ? 'Ты прошёл все 30 заданий и сохранил ' + state.credits + ' ⚡ кредитов! Верных ответов: ' + state.correctCount + ' из 30.'
+      : 'Не расстраивайся! Повтори правила именования файлов и попробуй снова — рекорд ждёт тебя.';
+
+  const eScore   = document.getElementById('endScore');
+  const eCorrect = document.getElementById('endCorrect');
+  const eCombo   = document.getElementById('endCombo');
+  const eCredits = document.getElementById('endCredits');
+  if (eScore)   eScore.textContent = state.score;
+  if (eCorrect) eCorrect.textContent = state.correctCount + '/30';
+  if (eCombo)   eCombo.textContent = '×' + Math.max(1, state.maxCombo);
+  if (eCredits) eCredits.textContent = state.credits;
+
+  const box = document.getElementById('endAch');
+  if (box){
+    box.innerHTML = '';
+    Object.keys(ACHIEVEMENTS).forEach(k => {
+      const a = ACHIEVEMENTS[k];
+      const chip = div('ach-chip' + (state.achievements[k] ? ' on' : ''));
+      chip.appendChild(h('span', null, a.icon));
+      chip.appendChild(h('span', null, a.name));
+      box.appendChild(chip);
+    });
+  }
+
+  setTimeout(() => {
+    showScreen('endScreen');
+    refreshStartScreen();
+  }, won ? 900 : 1200);
+}
+
+function refreshStartScreen(){
+  let best = 0;
+  try { best = Number(localStorage.getItem(BEST_KEY) || 0); } catch(e){}
+  const b = document.getElementById('bestScore');
+  if (b) b.textContent = best;
+  renderAchList(document.getElementById('achList'));
+}
+
+/* =========================================================
+   14. ИНИЦИАЛИЗАЦИЯ
+   ========================================================= */
+document.addEventListener('DOMContentLoaded', function(){
+  state.achievements = loadAchievements();
+  refreshStartScreen();
+
+  const startBtn = document.getElementById('startBtn');
+  if (startBtn) startBtn.addEventListener('click', startGame);
+
+  const restartBtn = document.getElementById('restartBtn');
+  if (restartBtn) restartBtn.addEventListener('click', function(){
+    showScreen('startScreen');
+    refreshStartScreen();
+  });
+
+  document.addEventListener('pointerdown', function(){ ensureCtx(); }, { once:true });
+});
+</script>
+</body>
+</html>
